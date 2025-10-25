@@ -1,0 +1,20 @@
+['/home/fly/projects/reminders/reminders.py', 'show']
+# REMINDERS 
+
+
+Event: ooooooo 
+- When: October 25, 2025 at 7:00 PM
+ - 4 days left
+
+
+Event: ooooooo
+ - Description: yay this is a test 
+- When: October 25, 2025 
+ - 4 days left
+
+
+Event: THIS IS A TEST
+ - Description: yay test time! 
+- When: November 01, 2025 
+ - 11 days left
+
