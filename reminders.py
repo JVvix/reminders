@@ -56,17 +56,19 @@ def show(upcoming=False):
             markdown += f"- {days_until} days left\n"
 
         if upcoming:
-            cur3.execute("SELECT * FROM upcoming")
-            upcoming_rows = cur3.fetchall()
-            markdown += "\n# UPCOMING\n"
-            for row in upcoming_rows:
-                event, date, time, description, id = row
-                date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
-                time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
-                markdown += f"\n# {event}\n- When: {date} {'at ' + time if time else ''}\n"
-                if description:
-                    markdown += f"- Description: {description}\n"
-
+            cur3.execute("SELECT COUNT(*) FROM upcoming")
+            empty = cur3.fetchall()
+            if empty[0][0] != 0:
+                cur3.execute("SELECT * FROM upcoming")
+                upcoming_rows = cur3.fetchall()
+                markdown += "\n# UPCOMING\n"
+                for row in upcoming_rows:
+                    event, date, time, description, id = row
+                    date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
+                    time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
+                    markdown += f"\n# {event}\n- When: {date} {'at ' + time if time else ''}\n"
+                    if description:
+                        markdown += f"- Description: {description}\n"
         return markdown
     except sqlite3.Error as e:
         return f"Error showing reminders: {e}"
