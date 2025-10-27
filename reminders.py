@@ -48,7 +48,7 @@ def show(upcoming=False):
         markdown = "# REMINDERS\n"
         for row, days_row in zip(rows, days_rows):
             event, date, time, description, id = row
-            days_until = int(days_row[1])+1
+            days_until = int(days_row[1])
             date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
             time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
             markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
@@ -71,7 +71,7 @@ def show(upcoming=False):
                 upcoming_days_rows = cur4.fetchall()
                 markdown += "\n# UPCOMING\n"
                 for row, upcoming_days_row in zip(upcoming_rows, upcoming_days_rows):
-                    upcoming_days_until = int(upcoming_days_row[1])+1
+                    upcoming_days_until = int(upcoming_days_row[1])
                     event, date, time, description, id = row
                     date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
                     time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
@@ -117,7 +117,7 @@ if __name__ == "__main__":
             if markdown and "# UPCOMING" in markdown:
                 upcoming_section = markdown.split("# UPCOMING")[1]
                 markdown = markdown.split("# UPCOMING")[0]
-                subprocess.run(f"echo '{markdown}' | glow", shell=True)
+                subprocess.run(f"echo '{markdown}' | glow | cat", shell=True)
                 subprocess.run(f"tmux display-popup -E \"echo '# UPCOMING\n{upcoming_section}' | glow\" &", shell=True)
                 cur.close()
                 cur2.close()
@@ -125,7 +125,7 @@ if __name__ == "__main__":
                 conn.close()
                 sys.exit()
             else:
-                subprocess.run(f"echo '{markdown}' | glow ", shell=True)
+                subprocess.run(f"echo '{markdown}' | glow | cat ", shell=True)
                 cur.close()
                 cur2.close()
                 cur3.close()
