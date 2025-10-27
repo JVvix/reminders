@@ -2,6 +2,7 @@
 
 import io
 import os
+import subprocess
 import sys
 import sqlite3
 from datetime import datetime, timedelta
@@ -25,9 +26,9 @@ def update_reminders():
 
 # Function to add a reminder
 def add_reminder(event, date, time=None, description=None):
-    format_date = os.popen(f"date -d '{date}' +'%Y-%m-%d'").read().strip()
+    format_date = subprocess.run(f"date -d '{date}' +'%Y-%m-%d'", shell=True, capture_output=True, text=True).stdout.strip()
     if time and time.lower() != "none":
-        format_time = os.popen(f"date -d '{time}' +'%H:%M'").read().strip()
+        format_time = subprocess.run(f"date -d '{time}' +'%H:%M'", shell=True, capture_output=True, text=True).stdout.strip()
         cur.execute('INSERT INTO reminders (event, date, time) VALUES (?, ?, ?)', (event, format_date, format_time))
     elif description and description.lower() != "none":
         cur.execute('INSERT INTO reminders (event, date, description) VALUES (?, ?, ?)', (event, format_date, description))
@@ -47,8 +48,8 @@ def show(upcoming=False):
         for row, days_row in zip(rows, days_rows):
             event, date, time, description, id = row
             days_until = int(days_row[1])
-            date = os.popen(f"date -d '{date}' +'%B %d, %Y'").read().strip()
-            time = os.popen(f"date -d '{time}' +'%I:%M %p'").read().strip() if time else ""
+            date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
+            time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
             markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
             if description:
                 markdown += f"- Description: {description}\n"
@@ -60,8 +61,8 @@ def show(upcoming=False):
             markdown += "\n# UPCOMING\n"
             for row in upcoming_rows:
                 event, date, time, description, id = row
-                date = os.popen(f"date -d '{date}' +'%B %d, %Y'").read().strip()
-                time = os.popen(f"date -d '{time}' +'%I:%M %p'").read().strip() if time else ""
+                date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
+                time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
                 markdown += f"\n# {event}\n- When: {date} {'at ' + time if time else ''}\n"
                 if description:
                     markdown += f"- Description: {description}\n"
@@ -96,10 +97,21 @@ if __name__ == "__main__":
             markdown = show(upcoming=(len(sys.argv) > 2 and sys.argv[2].lower() == "upcoming"))
             if markdown and "# UPCOMING" in markdown:
                 upcoming_section = markdown.split("# UPCOMING")[1]
-                os.system(f"echo '{markdown}' | glow")
-                os.system(f"tmux display-popup -E \"echo '{upcoming_section}' | glow\"")
+                markdown.replace("# UPCOMING", "")
+                subprocess.run(f"echo '{markdown}' | glow", shell=True)
+                subprocess.run(f"tmux display-popup -E \"echo '# UPCOMING\n{upcoming_section}' | glow\" &", shell=True)
+                cur.close()
+                cur2.close()
+                cur3.close()
+                conn.close()
+                sys.exit()
             else:
-                os.system(f"echo '{markdown}' | glow")
+                subprocess.run(f"echo '{markdown}' | glow ", shell=True)
+                cur.close()
+                cur2.close()
+                cur3.close()
+                conn.close()
+                sys.exit()
 
     cur.close()
     cur2.close()
