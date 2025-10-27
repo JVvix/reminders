@@ -13,6 +13,7 @@ conn = sqlite3.connect(db_path)
 cur = conn.cursor()
 cur2 = conn.cursor()
 cur3 = conn.cursor()
+cur4 = conn.cursor()
 
 # Function to update reminders
 def update_reminders():
@@ -47,28 +48,42 @@ def show(upcoming=False):
         markdown = "# REMINDERS\n"
         for row, days_row in zip(rows, days_rows):
             event, date, time, description, id = row
-            days_until = int(days_row[1])
+            days_until = int(days_row[1])+1
             date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
             time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
             markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
             if description:
                 markdown += f"- Description: {description}\n"
-            markdown += f"- {days_until} days left\n"
+            if days_until > 1:
+                markdown += f"- {days_until} days left\n"
+            elif days_until > 0:
+                markdown += f"- {days_until} day left\n"
+            else:
+                markdown += f"- HAPPENING TODAY\n"
 
         if upcoming:
             cur3.execute("SELECT COUNT(*) FROM upcoming")
             empty = cur3.fetchall()
             if empty[0][0] != 0:
                 cur3.execute("SELECT * FROM upcoming")
+                cur4.execute("SELECT * FROM upcoming_days_until")
                 upcoming_rows = cur3.fetchall()
+                upcoming_days_rows = cur4.fetchall()
                 markdown += "\n# UPCOMING\n"
-                for row in upcoming_rows:
+                for row, upcoming_days_row in zip(upcoming_rows, upcoming_days_rows):
+                    upcoming_days_until = int(upcoming_days_row[1])+1
                     event, date, time, description, id = row
                     date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
                     time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
                     markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
                     if description:
                         markdown += f"- Description: {description}\n"
+                    if upcoming_days_until > 1:
+                        markdown += f"- {upcoming_days_until} days left\n"
+                    elif upcoming_days_until > 0:
+                        markdown += f"- {upcoming_days_until} day left\n"
+                    else:
+                        markdown += f"- HAPPENING TODAY\n"
         return markdown
     except sqlite3.Error as e:
         return f"Error showing reminders: {e}"
@@ -91,15 +106,17 @@ if __name__ == "__main__":
         elif command in ["delete", "remove"]:
             if len(sys.argv) > 2 and sys.argv[2].lower() == "all":
                 cur.execute("DELETE FROM reminders")
+                cur.execute("DELETE FROM upcoming")
                 conn.commit()
             elif len(sys.argv) > 2:
                 cur.execute("DELETE FROM reminders WHERE event = ?", (sys.argv[2],))
+                cur.execute("DELETE FROM upcoming WHERE event = ?", (sys.argv[2],))
                 conn.commit()
         elif command in ["list", "show"]:
             markdown = show(upcoming=(len(sys.argv) > 2 and sys.argv[2].lower() == "upcoming"))
             if markdown and "# UPCOMING" in markdown:
                 upcoming_section = markdown.split("# UPCOMING")[1]
-                markdown.replace("# UPCOMING", "")
+                markdown = markdown.split("# UPCOMING")[0]
                 subprocess.run(f"echo '{markdown}' | glow", shell=True)
                 subprocess.run(f"tmux display-popup -E \"echo '# UPCOMING\n{upcoming_section}' | glow\" &", shell=True)
                 cur.close()
