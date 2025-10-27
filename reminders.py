@@ -66,7 +66,7 @@ def show(upcoming=False):
                     event, date, time, description, id = row
                     date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
                     time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
-                    markdown += f"\n# {event}\n- When: {date} {'at ' + time if time else ''}\n"
+                    markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
                     if description:
                         markdown += f"- Description: {description}\n"
         return markdown
