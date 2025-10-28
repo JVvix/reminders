@@ -6,6 +6,8 @@ import subprocess
 import sys
 import sqlite3
 from datetime import datetime, timedelta
+from rich.console import Console
+from rich.markdown import Markdown
 
 # Database setup
 db_path = os.path.join(os.path.expanduser('~'), 'projects', 'reminders', 'reminders.db')
@@ -117,7 +119,7 @@ if __name__ == "__main__":
             if markdown and "# UPCOMING" in markdown:
                 upcoming_section = markdown.split("# UPCOMING")[1]
                 markdown = markdown.split("# UPCOMING")[0]
-                subprocess.run(f"echo '{markdown}' | glow | cat", shell=True)
+                subprocess.run(f"echo '{markdown}' | glow", shell=True)
                 subprocess.run(f"tmux display-popup -E \"echo '# UPCOMING\n{upcoming_section}' | glow\" &", shell=True)
                 cur.close()
                 cur2.close()
@@ -125,7 +127,9 @@ if __name__ == "__main__":
                 conn.close()
                 sys.exit()
             else:
-                subprocess.run(f"echo '{markdown}' | glow | cat ", shell=True)
+                # subprocess.run(f"echo '{markdown}' | glow ", shell=True)
+                # display(Markdown(f"{markdown}"))
+                display(Markdown("# This is a test!"))
                 cur.close()
                 cur2.close()
                 cur3.close()
