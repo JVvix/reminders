@@ -9,6 +9,9 @@ from datetime import datetime, timedelta
 from rich.console import Console
 from rich.markdown import Markdown
 
+# Console setup
+console = Console()
+
 # Database setup
 db_path = os.path.join(os.path.expanduser('~'), 'projects', 'reminders', 'reminders.db')
 conn = sqlite3.connect(db_path)
@@ -119,7 +122,7 @@ if __name__ == "__main__":
             if markdown and "# UPCOMING" in markdown:
                 upcoming_section = markdown.split("# UPCOMING")[1]
                 markdown = markdown.split("# UPCOMING")[0]
-                subprocess.run(f"echo '{markdown}' | glow", shell=True)
+                console.print(Markdown(f"{markdown}"))
                 subprocess.run(f"tmux display-popup -E \"echo '# UPCOMING\n{upcoming_section}' | glow\" &", shell=True)
                 cur.close()
                 cur2.close()
@@ -129,7 +132,9 @@ if __name__ == "__main__":
             else:
                 # subprocess.run(f"echo '{markdown}' | glow ", shell=True)
                 # display(Markdown(f"{markdown}"))
-                display(Markdown("# This is a test!"))
+                console.print(Markdown(f"{markdown}"))
+
+
                 cur.close()
                 cur2.close()
                 cur3.close()
