@@ -55,6 +55,18 @@ def show(upcoming=False):
         for row, days_row in zip(rows, days_rows):
             event, date, time, description, id = row
             days_until = int(days_row[1])
+            if time and days_until == 0:
+                format_time = subprocess.run(f"date -d '{time}' +'%H'", shell=True, capture_output=True, text=True).stdout.strip()
+                hours_until = int(datetime.now().strftime("%H")) - int(format_time)
+                hours_until =  int(format_time) - int(datetime.now().strftime("%H"))
+                if hours_until == 0:
+                    str_hours_until = "LESS THAN AN HOUR"
+                elif hours_until == 1:
+                    str_hours_until = str(hours_until) + " HOUR"
+                else:
+                    str_hours_until = str(hours_until) + " HOURS"
+                # print(hours_until)
+
             date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
             time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
             markdown += f"\n## {event}\n- When: {date} {'at ' + time if time else ''}\n"
@@ -65,7 +77,10 @@ def show(upcoming=False):
             elif days_until > 0:
                 markdown += f"- {days_until} day left\n"
             else:
-                markdown += f"- HAPPENING TODAY\n"
+                if time:
+                    markdown += f"- HAPPENING TODAY IN {str_hours_until}\n"
+                else:
+                    markdown += f"- HAPPENING TODAY\n"
 
         if upcoming:
             cur3.execute("SELECT COUNT(*) FROM upcoming")
