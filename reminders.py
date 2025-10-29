@@ -7,6 +7,7 @@ import sys
 import sqlite3
 from datetime import datetime, timedelta
 from rich.console import Console
+from rich.text import Text
 from rich.markdown import Markdown
 
 # Console setup
@@ -56,7 +57,7 @@ def show(upcoming=False):
             days_until = int(days_row[1])
             date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
             time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
-            markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
+            markdown += f"\n## {event}\n- When: {date} {'at ' + time if time else ''}\n"
             if description:
                 markdown += f"- Description: {description}\n"
             if days_until > 1:
