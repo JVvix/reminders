@@ -26,7 +26,7 @@ def update_reminders():
     try:
         cur.execute("DELETE FROM reminders WHERE julianday(date) - julianday(current_date) < 0")
         cur.execute("DELETE FROM upcoming WHERE julianday(date) - julianday(current_date) < 0")
-        cur.execute("INSERT OR IGNORE INTO upcoming (event, date, time, description, id) SELECT event, date, time, description, id FROM reminders WHERE julianday(date) - julianday(current_date) < 3")
+        cur.execute("INSERT OR IGNORE INTO upcoming (event, date, time, description, id) SELECT event, date, time, description, id FROM reminders WHERE julianday(date) - julianday(current_date) < 2")
         conn.commit()
     except sqlite3.Error as e:
         print(f"Error updating reminders: {e}")
@@ -44,7 +44,7 @@ def add_reminder(event, date, time=None, description=None):
     conn.commit()
 
 # Function to show reminders
-def show(upcoming=False):
+def show():
     try:
         cur.execute("SELECT * FROM reminders")
         cur2.execute("SELECT * FROM days_until")
@@ -54,8 +54,8 @@ def show(upcoming=False):
         markdown = "# REMINDERS\n"
         for row, days_row in zip(rows, days_rows):
             event, date, time, description, id = row
-            days_until = int(days_row[1])
-            if time and days_until == 0:
+            days_until = days_row[1]
+            if time and days_until < 1:
                 format_time = subprocess.run(f"date -d '{time}' +'%H'", shell=True, capture_output=True, text=True).stdout.strip()
                 hours_until = int(datetime.now().strftime("%H")) - int(format_time)
                 hours_until =  int(format_time) - int(datetime.now().strftime("%H"))
@@ -63,6 +63,8 @@ def show(upcoming=False):
                     str_hours_until = "LESS THAN AN HOUR"
                 elif hours_until == 1:
                     str_hours_until = str(hours_until) + " HOUR"
+                elif hours_until < 0:
+                    cur.execute(f"DELETE FROM reminders WHERE event='{event}' and id={id}")
                 else:
                     str_hours_until = str(hours_until) + " HOURS"
                 # print(hours_until)
@@ -73,38 +75,43 @@ def show(upcoming=False):
             if description:
                 markdown += f"- Description: {description}\n"
             if days_until > 1:
-                markdown += f"- {days_until} days left\n"
+                markdown += f"- {int(days_until)} days left\n"
             elif days_until > 0:
-                markdown += f"- {days_until} day left\n"
+                markdown += f"- {int(days_until)} day left\n"
             else:
                 if time:
                     markdown += f"- HAPPENING TODAY IN {str_hours_until}\n"
                 else:
                     markdown += f"- HAPPENING TODAY\n"
 
-        if upcoming:
-            cur3.execute("SELECT COUNT(*) FROM upcoming")
-            empty = cur3.fetchall()
-            if empty[0][0] != 0:
-                cur3.execute("SELECT * FROM upcoming")
-                cur4.execute("SELECT * FROM upcoming_days_until")
-                upcoming_rows = cur3.fetchall()
-                upcoming_days_rows = cur4.fetchall()
-                markdown += "\n# UPCOMING\n"
-                for row, upcoming_days_row in zip(upcoming_rows, upcoming_days_rows):
-                    upcoming_days_until = int(upcoming_days_row[1])
-                    event, date, time, description, id = row
-                    date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
-                    time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
-                    markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
-                    if description:
-                        markdown += f"- Description: {description}\n"
-                    if upcoming_days_until > 1:
-                        markdown += f"- {upcoming_days_until} days left\n"
-                    elif upcoming_days_until > 0:
-                        markdown += f"- {upcoming_days_until} day left\n"
-                    else:
-                        markdown += f"- HAPPENING TODAY\n"
+        cur3.execute("SELECT COUNT(*) FROM upcoming")
+        empty = cur3.fetchall()
+        if empty[0][0] != 0:
+            cur3.execute("SELECT * FROM upcoming")
+            cur4.execute("SELECT * FROM upcoming_days_until")
+            upcoming_rows = cur3.fetchall()
+            upcoming_days_rows = cur4.fetchall()
+            # markdown += "\n# UPCOMING\n"
+            for row, upcoming_days_row in zip(upcoming_rows, upcoming_days_rows):
+                upcoming_days_until = int(upcoming_days_row[1])
+                event, date, time, description, id = row
+                date = subprocess.run(f"date -d '{date}' +'%B %d, %Y'", shell=True, capture_output=True, text=True).stdout.strip()
+                time = subprocess.run(f"date -d '{time}' +'%I:%M %p'", shell=True, capture_output=True, text=True).stdout.strip() if time else ""
+                if upcoming_days_until == 1:
+                    today_or_tomorrow = "tomorrow"
+                else:
+                    today_or_tomorrow = "TODAY"
+
+                subprocess.run(f"notify-send '{event}' 'When: {date} {'at ' + time if time else ''}\nDescription: {description}\nHappening {today_or_tomorrow}!'", shell=True)
+                # markdown += f"\n{event}\n- When: {date} {'at ' + time if time else ''}\n"
+                # if description:
+                #     markdown += f"- Description: {description}\n"
+                # if upcoming_days_until > 1:
+                #     markdown += f"- {upcoming_days_until} days left\n"
+                # elif upcoming_days_until > 0:
+                #     markdown += f"- {upcoming_days_until} day left\n"
+                # else:
+                #     markdown += f"- HAPPENING TODAY\n"
         return markdown
     except sqlite3.Error as e:
         return f"Error showing reminders: {e}"
@@ -134,28 +141,17 @@ if __name__ == "__main__":
                 cur.execute("DELETE FROM upcoming WHERE event = ?", (sys.argv[2],))
                 conn.commit()
         elif command in ["list", "show"]:
-            markdown = show(upcoming=(len(sys.argv) > 2 and sys.argv[2].lower() == "upcoming"))
-            if markdown and "# UPCOMING" in markdown:
-                upcoming_section = markdown.split("# UPCOMING")[1]
-                markdown = markdown.split("# UPCOMING")[0]
-                console.print(Markdown(f"{markdown}"))
-                subprocess.run(f"tmux display-popup -E \"echo '# UPCOMING\n{upcoming_section}' | glow\" &", shell=True)
-                cur.close()
-                cur2.close()
-                cur3.close()
-                conn.close()
-                sys.exit()
-            else:
-                # subprocess.run(f"echo '{markdown}' | glow ", shell=True)
-                # display(Markdown(f"{markdown}"))
-                console.print(Markdown(f"{markdown}"))
+            markdown = show()
+            # if markdown and "# UPCOMING" in markdown:
+                # upcoming_section = markdown.split("# UPCOMING")[1]
+            console.print(Markdown(f"{markdown}"))
 
 
-                cur.close()
-                cur2.close()
-                cur3.close()
-                conn.close()
-                sys.exit()
+            cur.close()
+            cur2.close()
+            cur3.close()
+            conn.close()
+            sys.exit()
 
     cur.close()
     cur2.close()
